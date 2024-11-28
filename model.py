@@ -1,4 +1,4 @@
-#model.py
+# model.py
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData, Column, Integer, String, Float, Boolean, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship

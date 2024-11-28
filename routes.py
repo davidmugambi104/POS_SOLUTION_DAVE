@@ -1,15 +1,14 @@
-# routes.py
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime
 from model import db, Employee, Product, Transaction, SaleItem
-
-from flask import session
+import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'  # Change to a strong secret key
-app.config['JWT_SECRET_KEY'] = 'your_jwt_secret_key'  # For JWT
+app.config.from_object('config.Config')  # Load configuration from config.py
+
+# Initialize JWT manager
 jwt = JWTManager(app)
 
 # Sign Up Route (Registration)
@@ -34,6 +33,7 @@ def signup():
 
     return render_template('signup.html')
 
+# Login Route
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -43,20 +43,18 @@ def login():
         employee = Employee.query.filter_by(name=username).first()
         if employee and check_password_hash(employee.password_hash, password):
             access_token = create_access_token(identity={'id': employee.id, 'role': employee.role})
-            session['logged_in'] = True
-            session['user_id'] = employee.id
             return jsonify({'message': 'Login successful', 'token': access_token}), 200
         else:
             return jsonify({'message': 'Invalid credentials'}), 401
 
     return render_template('login.html')
 
-
-# Logout Route (JWT does not require explicit logout, but included for flow clarity)
+# Logout Route
 @app.route('/logout')
+@jwt_required()
 def logout():
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('login'))
+    # JWT does not require explicit logout, but you can invalidate the token on the client side
+    return jsonify({'message': 'Successfully logged out'}), 200
 
 # Product Lookup Route
 @app.route('/products', methods=['GET', 'POST'])
@@ -121,7 +119,7 @@ def receipt(transaction_id):
         return jsonify({'message': 'Transaction not found'}), 404
     return render_template('receipt.html', transaction=transaction)
 
-# Admin-Only Example Route
+# Admin-Only Route
 @app.route('/admin')
 @jwt_required()
 def admin_only():
@@ -129,6 +127,3 @@ def admin_only():
     if current_user['role'] != 'admin':
         return jsonify({'message': 'Access denied'}), 403
     return jsonify({'message': 'Welcome, admin!'}), 200
-
-if __name__ == '__main__':
-    app.run(debug=True)
